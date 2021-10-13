@@ -269,5 +269,5 @@ function main() {
 
 ## 代码
 
-1. 请参考WebGLExample中的代码
+1. 请参考SimpleWebGLExample中的代码
 
