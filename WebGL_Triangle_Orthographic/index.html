@@ -5,11 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>WebGL</title>
     <link type="text/css" href="./index.css" rel="stylesheet"/>
+    <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.6.0.min.js"></script>
   </head>
   <body>
     <canvas id="c" width="398" height="298"></canvas>
 
     <script src="./lib_matrix.js"></script>
+    <script src="./lib_event.js"></script>
 
     <script id="vertex-shader-3d" type="x-shader/x-vertex">
       // vertex shader
@@ -113,6 +115,8 @@
       }
 
       function processor(gl, positionAttributeLocation, colorLocation, transformLocation) {
+        var self = this;
+
         var vertices = [
           [ 0.0, -0.25, -0.50],
           [ 0.0,  0.25,  0.00],
@@ -144,7 +148,7 @@
         // 边线颜色:黑
         var edge_color = new Float32Array([0.0, 0.0, 0.0, 1.0]);
 
-        if (triangles.length > 0) {
+        //if (triangles.length > 0) {
           // 把所有的顶点按顺序放入到Float32Array数组当中。
           var number_triangles = triangles.length;
           var number_vertices = number_triangles * 3;
@@ -169,21 +173,40 @@
 
           vertices3 = null;
 
-          var angle_x = 0.0;
-          var angle_y = 0.0;
+          self.angle_x = 0.0;
+          self.angle_y = 0.0;
 
           var rotate_x_matrix = new Float32Array(16);
           var rotate_y_matrix = new Float32Array(16);
 
+
+
+          // var matrix = new q_matrix();
+          // rotate_x_matrix = new Float32Array(matrix.xRotation(matrix.toRadians(angle_x)));
+          // rotate_y_matrix = new Float32Array(matrix.yRotation(matrix.toRadians(angle_y)));
+
+          //var projection = matrix.createOrthographic(-1, 1, -1, 1, -1, 1);
+
+          var transform = new Float32Array(16);
+          // transform = matrix.multiplySeries(transform, projection, rotate_x_matrix, rotate_y_matrix);
+
+          
+        //}
+
+        self.buildData = function() {
+          gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
           var matrix = new q_matrix();
-          rotate_x_matrix = new Float32Array(matrix.xRotation(matrix.toRadians(angle_x)));
-          rotate_y_matrix = new Float32Array(matrix.yRotation(matrix.toRadians(angle_y)));
+          rotate_x_matrix = new Float32Array(matrix.xRotation(matrix.toRadians(self.angle_x)));
+          rotate_y_matrix = new Float32Array(matrix.yRotation(matrix.toRadians(self.angle_y)));
 
           var projection = matrix.createOrthographic(-1, 1, -1, 1, -1, 1);
 
-          var transform = new Float32Array(16);
+          transform = new Float32Array(16);
           transform = matrix.multiplySeries(transform, projection, rotate_x_matrix, rotate_y_matrix);
+        }
 
+        self.render = function() {
           gl.uniformMatrix4fv(transformLocation, false, transform);
           // Set the color for all of the triangle faces
           gl.uniform4fv(colorLocation, pyramid_color);
@@ -213,6 +236,7 @@
         // Clear the canvas
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.enable(gl.DEPTH_TEST);
 
         var vertexShader = loadVertexShader(gl);
         var fragmentShader = loadFragmentShader(gl);
@@ -239,7 +263,11 @@
         // ];
         // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
-        processor(gl, positionAttributeLocation, colorLocation, transformLocation);
+        var proc = new processor(gl, positionAttributeLocation, colorLocation, transformLocation);
+        proc.buildData();
+        proc.render();
+
+        var event = new q_event(proc, "c");
 
         // // Turn on the attribute
         // gl.enableVertexAttribArray(positionAttributeLocation);
