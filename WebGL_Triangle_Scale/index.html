@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>WebGL</title>
+    <link type="text/css" href="./index.css" rel="stylesheet"/>
+    <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.6.0.min.js"></script>
+  </head>
+  <body>
+    <canvas id="c" width="398" height="298"></canvas>
+
+    <div>
+      Scale <span>1.00</span> : 0.3 <input type="range" id="W1_scale" min="0.3" max="2.0" value="1.0" step="0.01" style="width:250px"> 2.0 <br>
+    </div>
+
+    <script src="./lib_matrix.js"></script>
+    <script src="./lib_event.js"></script>
+
+    <script id="vertex-shader-3d" type="x-shader/x-vertex">
+      // vertex shader
+      precision mediump int;
+      precision mediump float;
+
+      attribute vec3 a_Color;
+
+      uniform mat4 u_Transform;
+      attribute vec3 a_position;
+      attribute vec2 a_Texture;
+
+      varying vec4 v_vertex_color;
+      varying vec2 v_texture;
+
+      void main() {
+        gl_Position = u_Transform * vec4(a_position, 1.0);
+
+        v_vertex_color = vec4(a_Color, 1.0);
+        v_texture = a_Texture;
+      }
+
+    </script>
+
+    <script id="fragment-shader-3d" type="x-shader/x-fragment">
+      //fragment shader
+      precision mediump int;
+      precision mediump float;
+
+      varying vec4 v_vertex_color;
+      varying vec2 v_texture;
+
+      //-------------------------------------------------
+      // modify the color based on the texture coordinates
+      vec4 modify_color(vec2 tex_coords, vec4 color) {
+        float s = tex_coords[0];
+        float t = tex_coords[1];
+        vec3 rgb = vec3(color);
+        vec4 new_color;
+
+        if ( mod((floor(s/10.0) + floor(t/10.0)),2.0) == 1.0) {
+          // Make the color lighter
+          new_color = vec4(clamp(rgb * 1.2, 0.0, 1.0), 1.0);
+        } else {
+          // Make the color darker
+          new_color = vec4(rgb * 0.8, 1.0);
+        }
+        return new_color;
+      }
+
+      void main() {
+        gl_FragColor = modify_color(v_texture, v_vertex_color);
+      }
+    </script>
+
+    <script>
+
+      function loadVertexShader(gl) {
+        const vertexShaderScript = document.getElementById("vertex-shader-3d");
+        if (!vertexShaderScript) {
+          throw ('*** Error: unknown script element' + "vertex-shader-3d");
+        }
+        let vertexShaderSource = vertexShaderScript.text;
+
+        // Create the shader object
+        const shader = gl.createShader(gl.VERTEX_SHADER);
+
+        // Load the shader source
+        gl.shaderSource(shader, vertexShaderSource);
+
+        // Compile the shader
+        gl.compileShader(shader);
+
+        // Check the compile status
+        const compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+        if (!compiled) {
+          const lastError = gl.getShaderInfoLog(shader);
+          console.log('*** Error compiling shader \'' + shader + '\':' + lastError + `\n` + shaderSource.split('\n').map((l,i) => `${i + 1}: ${l}`).join('\n'));
+          gl.deleteShader(shader);
+          return null;
+        }
+        return shader;
+      }
+
+      function loadFragmentShader(gl) {
+        const fragmentShaderScript = document.getElementById("fragment-shader-3d");
+        if (!fragmentShaderScript) {
+          throw ('*** Error: unknown script element' + "fragment-shader-3d");
+        }
+        let fragmentShaderSource = fragmentShaderScript.text;
+
+        // Create the shader object
+        const shader = gl.createShader(gl.FRAGMENT_SHADER);
+
+        // Load the shader source
+        gl.shaderSource(shader, fragmentShaderSource);
+
+        // Compile the shader
+        gl.compileShader(shader);
+
+        // Check the compile status
+        const compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+        if (!compiled) {
+          const lastError = gl.getShaderInfoLog(shader);
+          console.log('*** Error compiling shader \'' + shader + '\':' + lastError + `\n` + shaderSource.split('\n').map((l,i) => `${i + 1}: ${l}`).join('\n'));
+          gl.deleteShader(shader);
+          return null;
+        }
+        return shader;
+      }
+
+      function createProgram(gl, vertexShader, fragmentShader) {
+        let program = gl.createProgram();
+
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+
+        gl.linkProgram(program);
+
+        var success = gl.getProgramParameter(program, gl.LINK_STATUS);
+        if (success) {
+          return program;
+        }
+
+        console.log(gl.getProgramInfoLog(program));
+        gl.deleteProgram(program);
+      }
+
+      function processor(gl, positionAttributeLocation, colorLocation, transformLocation, textureLocation) {
+        var self = this;
+
+        var vertices = [
+          [ 0.0, -0.25, -0.50],
+          [ 0.0,  0.25,  0.00],
+          [ 0.5, -0.25,  0.25],
+          [-0.5, -0.25,  0.25]
+        ];
+
+        // 四个三角面
+        var triangle1 = [
+          vertices[2], vertices[1], vertices[3]
+        ];
+        var triangle2 = [
+          vertices[3], vertices[1], vertices[0]
+        ];
+        var triangle3 = [
+          vertices[0], vertices[1], vertices[2]
+        ];
+        var triangle4 = [
+          vertices[0], vertices[2], vertices[3]
+        ];
+
+        var triangles = [
+          triangle1, triangle2, triangle3, triangle4
+        ];
+
+        // 三角面颜色: 红
+        var pyramid_color = new Float32Array([1.0, 0.0, 0.0, 1.0]);
+
+        // 边线颜色:黑
+        var edge_color = new Float32Array([0.0, 0.0, 0.0, 1.0]);
+
+        //if (triangles.length > 0) {
+          // 把所有的顶点按顺序放入到Float32Array数组当中。
+          var number_triangles = triangles.length;
+          var number_vertices = number_triangles * 3;
+          var vertices3 = new Float32Array(number_vertices * 3);
+          var color_array = new Float32Array(number_vertices * 3);
+          var texture_array = new Float32Array(number_vertices * 2);
+
+          let nv = 0;
+          for (let i = 0; i < triangles.length; i += 1) {
+            var triangle = triangles[i];
+
+            for (let j = 0; j < 3; j += 1) {
+              let vertex = triangle[j];
+
+              for (let m = 0; m < 3; m += 1, nv += 1) {
+                vertices3[nv] = vertex[m];
+              }
+            }
+          }
+
+          var red    = [1.0, 0.0, 0.0];
+          var green  = [0.0, 1.0, 0.0];
+          var blue   = [0.0, 0.0, 1.0];
+          var purple = [1.0, 0.0, 1.0];
+
+          var triangle_colors = [
+            [blue, green, purple],
+            [purple, green, red],
+            [red, green, blue],
+            [red, blue, purple]
+          ];
+
+          let nt = 0;
+          for (let i = 0; i < triangle_colors.length; i += 1) {
+            let triangle_colors_item = triangle_colors[i];
+            for (let j = 0; j < triangle_colors_item.length; j += 1) {
+              let color_item = triangle_colors_item[j];
+              for (let m = 0; m < color_item.length; m += 1, nt += 1) {
+                color_array[nt] = color_item[m];
+              }
+            }
+          }
+
+          var ta = [0, 0];
+          var tb = [40, 0];
+          var tc = [20, 40];
+
+          var triangle_texture = [
+            [tb, ta, tc],
+            [tc, tb, ta],
+            [ta, tc, tb],
+            [tb, ta, tc]
+          ];
+
+          let tt = 0;
+          for (let i = 0; i < triangle_texture.length; i += 1) {
+            let triangle_texture_item = triangle_texture[i];
+            for (let j = 0; j < triangle_texture_item.length; j += 1) {
+              let texture_item = triangle_texture_item[j];
+              for (let m = 0; m < texture_item.length; m += 1, tt += 1) {
+                texture_array[tt] = texture_item[m];
+              }
+            }
+          }
+
+
+          self.positionBuffer = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, self.positionBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, vertices3, gl.STATIC_DRAW);
+
+          self.colorBuffer = gl.createBuffer();
+          // Make the buffer object the active buffer.
+          gl.bindBuffer(gl.ARRAY_BUFFER, self.colorBuffer);
+          // Upload the data for this buffer object to the GPU.
+          gl.bufferData(gl.ARRAY_BUFFER, color_array, gl.STATIC_DRAW);
+
+          self.textureBuffer = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, self.textureBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, texture_array, gl.STATIC_DRAW);
+
+          vertices3 = null;
+          color_array = null;
+
+          self.angle_x = 0.0;
+          self.angle_y = 0.0;
+
+          var rotate_x_matrix = new Float32Array(16);
+          var rotate_y_matrix = new Float32Array(16);
+
+          self.scale = 1.0;
+          var scale_matrix = new Float32Array([
+            self.scale, 0, 0, 0,
+            0, self.scale, 0, 0,
+            0, 0, self.scale, 0,
+            0, 0, 0, 1
+          ]);
+
+          // var matrix = new q_matrix();
+          // rotate_x_matrix = new Float32Array(matrix.xRotation(matrix.toRadians(angle_x)));
+          // rotate_y_matrix = new Float32Array(matrix.yRotation(matrix.toRadians(angle_y)));
+
+          //var projection = matrix.createOrthographic(-1, 1, -1, 1, -1, 1);
+
+          var transform = new Float32Array(16);
+          // transform = matrix.multiplySeries(transform, projection, rotate_x_matrix, rotate_y_matrix);
+
+          
+        //}
+
+        self.buildData = function() {
+          gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+          var matrix = new q_matrix();
+          rotate_x_matrix = new Float32Array(matrix.xRotation(matrix.toRadians(self.angle_x)));
+          rotate_y_matrix = new Float32Array(matrix.yRotation(matrix.toRadians(self.angle_y)));
+
+          var projection = matrix.createOrthographic(-1, 1, -1, 1, -1, 1);
+
+          scale_matrix = new Float32Array([
+            self.scale, 0, 0, 0,
+            0, self.scale, 0, 0,
+            0, 0, self.scale, 0,
+            0, 0, 0, 1
+          ]);
+
+          transform = new Float32Array(16);
+          transform = matrix.multiplySeries(transform, projection, rotate_x_matrix, rotate_y_matrix, scale_matrix);
+        }
+
+        self.render = function() {
+          gl.uniformMatrix4fv(transformLocation, false, transform);
+          // Set the color for all of the triangle faces
+          //gl.uniform4fv(colorLocation, pyramid_color);
+
+          gl.bindBuffer(gl.ARRAY_BUFFER, self.positionBuffer);
+          gl.vertexAttribPointer(positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+          gl.enableVertexAttribArray(positionAttributeLocation);
+
+          gl.bindBuffer(gl.ARRAY_BUFFER, self.colorBuffer);
+          gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false, 0, 0);
+          gl.enableVertexAttribArray(colorLocation);
+
+          gl.bindBuffer(gl.ARRAY_BUFFER, self.textureBuffer);
+          gl.vertexAttribPointer(textureLocation, 2, gl.FLOAT, false, 0, 0);
+          gl.enableVertexAttribArray(textureLocation);
+
+          gl.drawArrays(gl.TRIANGLES, 0, number_triangles * 3);
+
+          // gl.uniform4fv(colorLocation, edge_color);
+
+          // for (j = 0, start = 0; j < number_triangles; j += 1, start += 3) {
+          //   gl.drawArrays(gl.LINE_LOOP, start, 3);
+          // }
+        }
+      }
+
+      function main() {
+        var canvas = document.getElementById("c");
+        var gl = canvas.getContext("webgl");
+
+        if (!gl) {
+          return;
+        }
+
+        // Clear the canvas
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.enable(gl.DEPTH_TEST);
+
+        var vertexShader = loadVertexShader(gl);
+        var fragmentShader = loadFragmentShader(gl);
+
+        var program = createProgram(gl, vertexShader, fragmentShader);
+
+        // Tell it to use our program (pair of shaders)
+        gl.useProgram(program);
+
+        var positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+        var colorLocation = gl.getAttribLocation(program, "a_Color");
+        var transformLocation = gl.getUniformLocation(program, "u_Transform");
+        var textureLocation = gl.getAttribLocation(program, "a_Texture");
+
+        // // Create a buffer and put three 2d clip space points in it
+        // var positionBuffer = gl.createBuffer();
+
+        // // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
+        // gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+
+        // var positions = [
+        //   0.0, -0.25,
+        //   0, 0.5,
+        //   0.7, 0,
+        // ];
+        // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+        var proc = new processor(gl, positionAttributeLocation, colorLocation, transformLocation, textureLocation);
+        proc.buildData();
+        proc.render();
+
+        var event = new q_event(proc, "c");
+
+        // // Turn on the attribute
+        // gl.enableVertexAttribArray(positionAttributeLocation);
+
+        // // Bind the position buffer.
+        // gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+
+        // // set color
+        // var pyramid_color = new Float32Array([1, 0, 0.5, 1]);
+        // gl.uniform4fv(colorLocation, pyramid_color);
+
+        // // Tell the attribute how to get data out of positionBuffer (ARRAY_BUFFER)
+        // var size = 2;          // 2 components per iteration
+        // var type = gl.FLOAT;   // the data is 32bit floats
+        // var normalize = false; // don't normalize the data
+        // var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
+        // var offset = 0;        // start at the beginning of the buffer
+        // gl.vertexAttribPointer(
+        //     positionAttributeLocation, size, type, normalize, stride, offset);
+
+        // // draw
+        // var primitiveType = gl.TRIANGLES;
+        // var offset = 0;
+        // var count = 3;
+        // gl.drawArrays(primitiveType, offset, count);
+      }
+
+      main();
+
+    </script>
+  </body>
+</html>
