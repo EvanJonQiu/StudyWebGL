@@ -18,13 +18,17 @@
       precision mediump int;
       precision mediump float;
 
-      uniform vec4 u_FragColor;
+      attribute vec3 a_Color;
 
       uniform mat4 u_Transform;
       attribute vec3 a_position;
 
+      varying vec4 v_vertex_color;
+
       void main() {
         gl_Position = u_Transform * vec4(a_position, 1.0);
+
+        v_vertex_color = vec4(a_Color, 1.0);
       }
 
     </script>
@@ -34,10 +38,10 @@
       precision mediump int;
       precision mediump float;
 
-      uniform vec4 u_FragColor;
+      varying vec4 v_vertex_color;
 
       void main() {
-        gl_FragColor = u_FragColor;
+        gl_FragColor = v_vertex_color;
       }
     </script>
 
@@ -153,6 +157,7 @@
           var number_triangles = triangles.length;
           var number_vertices = number_triangles * 3;
           var vertices3 = new Float32Array(number_vertices * 3);
+          var color_array = new Float32Array(number_vertices * 3);
 
           let nv = 0;
           for (let i = 0; i < triangles.length; i += 1) {
@@ -167,11 +172,41 @@
             }
           }
 
-          var positionBuffer = gl.createBuffer();
-          gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+          var red    = [1.0, 0.0, 0.0];
+          var green  = [0.0, 1.0, 0.0];
+          var blue   = [0.0, 0.0, 1.0];
+          var purple = [1.0, 0.0, 1.0];
+
+          var triangle_colors = [
+            [blue, green, purple],
+            [purple, green, red],
+            [red, green, blue],
+            [red, blue, purple]
+          ];
+
+          let nt = 0;
+          for (let i = 0; i < triangle_colors.length; i += 1) {
+            let triangle_colors_item = triangle_colors[i];
+            for (let j = 0; j < triangle_colors_item.length; j += 1) {
+              let color_item = triangle_colors_item[j];
+              for (let m = 0; m < color_item.length; m += 1, nt += 1) {
+                color_array[nt] = color_item[m];
+              }
+            }
+          }
+
+          self.positionBuffer = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, self.positionBuffer);
           gl.bufferData(gl.ARRAY_BUFFER, vertices3, gl.STATIC_DRAW);
 
+          self.colorBuffer = gl.createBuffer();
+          // Make the buffer object the active buffer.
+          gl.bindBuffer(gl.ARRAY_BUFFER, self.colorBuffer);
+          // Upload the data for this buffer object to the GPU.
+          gl.bufferData(gl.ARRAY_BUFFER, color_array, gl.STATIC_DRAW);
+
           vertices3 = null;
+          color_array = null;
 
           self.angle_x = 0.0;
           self.angle_y = 0.0;
@@ -179,7 +214,16 @@
           var rotate_x_matrix = new Float32Array(16);
           var rotate_y_matrix = new Float32Array(16);
 
+
+
+          // var matrix = new q_matrix();
+          // rotate_x_matrix = new Float32Array(matrix.xRotation(matrix.toRadians(angle_x)));
+          // rotate_y_matrix = new Float32Array(matrix.yRotation(matrix.toRadians(angle_y)));
+
+          //var projection = matrix.createOrthographic(-1, 1, -1, 1, -1, 1);
+
           var transform = new Float32Array(16);
+          // transform = matrix.multiplySeries(transform, projection, rotate_x_matrix, rotate_y_matrix);
 
           
         //}
@@ -200,19 +244,23 @@
         self.render = function() {
           gl.uniformMatrix4fv(transformLocation, false, transform);
           // Set the color for all of the triangle faces
-          gl.uniform4fv(colorLocation, pyramid_color);
-          
-          gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+          //gl.uniform4fv(colorLocation, pyramid_color);
+
+          gl.bindBuffer(gl.ARRAY_BUFFER, self.positionBuffer);
           gl.vertexAttribPointer(positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
           gl.enableVertexAttribArray(positionAttributeLocation);
 
+          gl.bindBuffer(gl.ARRAY_BUFFER, self.colorBuffer);
+          gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false, 0, 0);
+          gl.enableVertexAttribArray(colorLocation);
+
           gl.drawArrays(gl.TRIANGLES, 0, number_triangles * 3);
 
-          gl.uniform4fv(colorLocation, edge_color);
+          // gl.uniform4fv(colorLocation, edge_color);
 
-          for (j = 0, start = 0; j < number_triangles; j += 1, start += 3) {
-            gl.drawArrays(gl.LINE_LOOP, start, 3);
-          }
+          // for (j = 0, start = 0; j < number_triangles; j += 1, start += 3) {
+          //   gl.drawArrays(gl.LINE_LOOP, start, 3);
+          // }
         }
       }
 
@@ -238,7 +286,7 @@
         gl.useProgram(program);
 
         var positionAttributeLocation = gl.getAttribLocation(program, "a_position");
-        var colorLocation = gl.getUniformLocation(program, "u_FragColor");
+        var colorLocation = gl.getAttribLocation(program, "a_Color");
         var transformLocation = gl.getUniformLocation(program, "u_Transform");
 
         // // Create a buffer and put three 2d clip space points in it
