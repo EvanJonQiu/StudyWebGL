@@ -1,4 +1,4 @@
-var load_model = function(gl, program, model_list, transform) {
+var load_model = function(gl, program, model_list, transform1) {
   var self = this;
 
   var number_retrieved = 0;
@@ -132,9 +132,33 @@ var load_model = function(gl, program, model_list, transform) {
         _addModelsToModelDictionary(more_models);
       }
 
+      var matrix = new webgl_matrix();
+      var view = matrix.create();
+      var base_y_rotate = matrix.create();
+      var transform = matrix.create();
+      var projection = matrix.createOrthographic(-10, 10, -2, 18, -20, 20);
+      var forearm_rotate = matrix.create();
+      var forearm_translate = matrix.create();
+      var forearm_angle = 0.0;
+
+      var base_x_rotate = matrix.create();
+
+      var base_y_angle = 30;
+
+      matrix.xRotation(view, 80);
+
+      matrix.xRotation(base_x_rotate, 90);
+      matrix.yRotation(base_y_rotate, base_y_angle);
+
+      matrix.multiplySeries(transform, projection, view, base_x_rotate, base_y_rotate);
+
       // Create a Scene object which does all the rendering and events
       scene = new window['webgl_render'](gl, program, model_dictionary.Base);
       scene.render(transform);
+
+      matrix.translate(forearm_translate, 0, 2, 0);
+      matrix.zRotation(forearm_rotate, forearm_angle);
+      matrix.multiplySeries(transform, projection, view, base_x_rotate, base_y_rotate, forearm_translate, forearm_rotate);
 
       scene1 = new window['webgl_render'](gl, program, model_dictionary.Forearm);
       scene1.render(transform);
