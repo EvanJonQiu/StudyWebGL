@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>WebGL</title>
+    <link type="text/css" href="./index.css" rel="stylesheet"/>
+    <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.6.0.min.js"></script>
+  </head>
+  <body>
+    <canvas id="c" width="400" height="400"></canvas>
+
+    <script src="./load_shader.js"></script>
+    <script src="./load_model.js"></script>
+    <script src="./learn_webgl_obj_to_arrays.js"></script>
+    <script src="./learn_webgl_vector3.js"></script>
+    <script src="./learn_webgl_model_render_05.js"></script>
+    <script src="./camera_lookat_render.js"></script>
+    <script src="./learn_webgl_matrix.js"></script>
+    <script src="./learn_webgl_point4.js"></script>
+    <script src="./learn_webgl_ray_model.js"></script>
+
+    <script id="vertex-shader-3d" type="x-shader/x-vertex">
+      // Vertex Shader
+      precision mediump int;
+      precision mediump float;
+
+      uniform mat4 u_Transform;
+
+      attribute vec3 a_Vertex;
+      attribute vec4 a_Color;
+
+      varying vec4 v_Color;
+
+      void main() {
+        // Transform the location of the vertex
+        gl_Position = u_Transform * vec4(a_Vertex, 1.0);
+
+        // Set the color of the vertex from the attribute VOB
+        v_Color = a_Color;
+      }
+
+    </script>
+
+    <script id="fragment-shader-3d" type="x-shader/x-fragment">
+      // Fragment shader program
+      precision mediump int;
+      precision mediump float;
+
+      varying vec4 v_Color;
+
+      void main() {
+        gl_FragColor = v_Color;
+      }
+    </script>
+
+    <script>
+      function main() {
+        var canvas = document.getElementById("c");
+        var gl = canvas.getContext("webgl");
+
+        if (!gl) {
+          return;
+        }
+
+        // Clear the canvas
+        gl.clearColor(1.0, 1.0, 1.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.enable(gl.DEPTH_TEST);
+
+        var loadShader = new load_shader();
+        var vertexShader = loadShader.loadVertexShader(gl, "vertex-shader-3d");
+        var fragmentShader = loadShader.loadFragmentShader(gl, "fragment-shader-3d");
+
+        var program = loadShader.createProgram(gl, vertexShader, fragmentShader);
+
+        // Tell it to use our program (pair of shaders)
+        gl.useProgram(program);
+
+        var loadModel = new load_model(gl, "SceneLookatRender", program, ["./XYZ_Blocks.obj", "./camera.obj", "./Axes2Units.obj", "./sphere.obj"]);
+      }
+
+      main();
+
+    </script>
+  </body>
+</html>
