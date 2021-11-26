@@ -1,8 +1,10 @@
-var SceneLookatRender = function (gl, program, models) {
+var SceneLookatRender = function (gl, program, program_ray, models, gl2, program2) {
 
   var self = this;
 
   var render_models = {};
+  var up_ray;
+  var ray_scale = 2;
 
   var matrix = new Learn_webgl_matrix();
   var transform = matrix.create();
@@ -63,6 +65,7 @@ var SceneLookatRender = function (gl, program, models) {
     ey = (ey / dist) * camera_distance;
     ez = (ez / dist) * camera_distance;
     matrix.lookAt(camera, ex, ey, ez, 0, 0, 0, 0, 1, 0);
+    console.log(ex + "," + ey + "," + ez);
 
     // Create the base transform which is built upon for all other transforms
     matrix.multiplySeries(base, projection, camera);
@@ -84,6 +87,14 @@ var SceneLookatRender = function (gl, program, models) {
     for (j = 0; j < cube_model_names.length; j += 1) {
       render_models[cube_model_names[j]].render(transform);
     }
+
+    //  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Render the up vector for the camera
+    up_ray.set(self.eyex, self.eyey, self.eyez,
+      self.eyex + self.upx*ray_scale,
+      self.eyey + self.upy*ray_scale,
+      self.eyez + self.upz*ray_scale);
+    up_ray.render(transform);
 
     //  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Render the "center point" of the virtual camera as a small sphere
@@ -115,6 +126,35 @@ var SceneLookatRender = function (gl, program, models) {
     for (j = 0; j < camera_model_names.length; j += 1) {
       render_models[camera_model_names[j]].render(transform);
     }
+
+    // Render the other window that shows what the camera sees.
+    self.render2();
+  };
+
+  self.render2 = function() {
+    var j;
+
+    //gl2.viewport(self.canvas2.width,self.canvas2.height/2,self.canvas2.width/2,self.canvas2.height/2);
+
+    // Clear the entire canvas window background with the clear color
+    gl2.clear(gl2.COLOR_BUFFER_BIT | gl2.DEPTH_BUFFER_BIT);
+
+    // Combine the transforms into a single transformation
+    matrix.multiplySeries(transform, projection, virtual_camera, axes_scale);
+
+    // Draw each global axes
+    for (j = 0; j < axes_model_names.length; j += 1) {
+      render_models2[axes_model_names[j]].render(transform);
+    }
+
+    //  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Render model
+    matrix.multiplySeries(transform, projection, virtual_camera);
+
+    // Draw each model
+    for (j = 0; j < cube_model_names.length; j += 1) {
+      render_models2[cube_model_names[j]].render(transform);
+    }
   };
 
   // Create Vertex Object Buffers for the models
@@ -124,4 +164,26 @@ var SceneLookatRender = function (gl, program, models) {
     render_models[name] = new Learn_webgl_model_render_05(gl, program, models[name]);
   }
 
+  up_ray = new Create_ray_manually(gl, program_ray, 0, 0, 0, 1, 0, 0, [0,0,0,1]);
+
+  var events;
+  events = new CameraLookatEvents(self, []);
+
+  var id = '#' + "c";
+  $( id ).mousedown( events.mouse_drag_started );
+  $( id ).mouseup( events.mouse_drag_ended );
+  $( id ).mousemove( events.mouse_dragged );
+
+  var render_models2 = {};
+
+  var transform2 = matrix.create();
+
+  var translate2 = matrix.create();
+  matrix.translate(translate2, -1, -1, -2.0);
+
+  // Create Vertex Object Buffers for the models
+  for (j = 0; j < models.number_models; j += 1) {
+    name = models[j].name;
+    render_models2[name] = new Learn_webgl_model_render_05(gl2, program2, models[name]);
+  }
 };

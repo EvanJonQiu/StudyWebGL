@@ -9,6 +9,7 @@
   </head>
   <body>
     <canvas id="c" width="400" height="400"></canvas>
+    <canvas id="d" width="200" height="200"></canvas>
 
     <script src="./load_shader.js"></script>
     <script src="./load_model.js"></script>
@@ -19,6 +20,7 @@
     <script src="./learn_webgl_matrix.js"></script>
     <script src="./learn_webgl_point4.js"></script>
     <script src="./learn_webgl_ray_model.js"></script>
+    <script src="./camera_lookat_events.js"></script>
 
     <script id="vertex-shader-3d" type="x-shader/x-vertex">
       // Vertex Shader
@@ -54,6 +56,39 @@
       }
     </script>
 
+    <script id="vertex-shader-3d-ray" type="x-shader/x-vertex">
+      // Vertex Shader
+      // By: Dr. Wayne Brown, Spring 2016
+      
+      precision mediump int;
+      precision mediump float;
+      
+      uniform   mat4 u_Transform;
+      uniform   vec4 u_Color;
+      
+      attribute vec3 a_Vertex;
+      
+      void main() {
+        // Transform the location of the vertex
+        gl_Position = u_Transform * vec4(a_Vertex, 1.0);
+        gl_PointSize = 2.0;
+      }
+    </script>
+
+    <script id="fragment-shader-3d-ray" type="x-shader/x-fragment">
+      // Fragment shader
+      // By: Dr. Wayne Brown, Spring 2016
+      
+      precision mediump int;
+      precision mediump float;
+      
+      uniform vec4 u_Color;
+      
+      void main() {
+        gl_FragColor = u_Color;
+      }
+    </script>
+
     <script>
       function main() {
         var canvas = document.getElementById("c");
@@ -77,7 +112,28 @@
         // Tell it to use our program (pair of shaders)
         gl.useProgram(program);
 
-        var loadModel = new load_model(gl, "SceneLookatRender", program, ["./XYZ_Blocks.obj", "./camera.obj", "./Axes2Units.obj", "./sphere.obj"]);
+        var vertexShader_ray = loadShader.loadVertexShader(gl, "vertex-shader-3d-ray");
+        var fragmentShader_ray = loadShader.loadFragmentShader(gl, "fragment-shader-3d-ray");
+
+        var program_ray = loadShader.createProgram(gl, vertexShader_ray, fragmentShader_ray);
+
+        var canvas2 = document.getElementById("d");
+        var gl2 = canvas2.getContext("webgl");
+        if (!gl2) {
+          return;
+        }
+        gl2.enable(gl2.DEPTH_TEST);
+        gl2.clearColor(0.9, 0.9, 0.9, 1.0);
+
+        var vertexShader2 = loadShader.loadVertexShader(gl2, "vertex-shader-3d");
+        var fragmentShader2 = loadShader.loadFragmentShader(gl2, "fragment-shader-3d");
+
+        var program2 = loadShader.createProgram(gl2, vertexShader2, fragmentShader2);
+
+        gl2.useProgram(program2);
+
+        var loadModel = new load_model(gl, "SceneLookatRender", program, program_ray,
+          ["./XYZ_Blocks.obj", "./camera.obj", "./Axes2Units.obj", "./sphere.obj"], gl2, program2);
       }
 
       main();

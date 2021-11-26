@@ -1,4 +1,4 @@
-var load_model = function(gl, scene_object, program, model_list) {
+var load_model = function(gl, scene_object, program, program_ray, model_list, gl2, prgram2) {
   var self = this;
   var downloads_needed = 0;
   var number_retrieved = 0;
@@ -140,7 +140,7 @@ var load_model = function(gl, scene_object, program, model_list) {
       }
 
       // Create a Scene object which does all the rendering and events
-      scene = new window[scene_object](gl, program, model_dictionary);
+      scene = new window[scene_object](gl, program, program_ray, model_dictionary, gl2, prgram2);
       scene.render();
     }
   }
