@@ -32,6 +32,9 @@ M[2], M[5], M[8]<br/>
 
 **所以**,在WebGL中的矩阵与数学中的矩阵行列是不相同的，WebGL矩阵的行对应着数学矩阵中的列。
 
+## 注意
+**在阅读Learn WebGL和WebGL Fundamentals两篇文章时，请注意他们各自使用的矩阵模式差异。**
+
 ## 参考资料
 
 1. [matrix](http://learnwebgl.brown37.net/transformations2/transformations_matrices.html)
