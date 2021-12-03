@@ -403,3 +403,7 @@ function createFrustumUsingPerspective (left, right, bottom, top, near, far) {
 ```
 
 从根本上说，透视投影会根据每个顶点到相机的距离来改变每个顶点的 x 和 y 值。它还准备用于顶点的裁剪。
+
+后续：
+
+1. [视角](./viewports.md)
