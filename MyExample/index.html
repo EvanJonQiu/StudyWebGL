@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>WebGL</title>
+    <link type="text/css" href="./index.css" rel="stylesheet"/>
+    <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.6.0.min.js"></script>
+  </head>
+  <body>
+    <canvas id="c" width="400" height="400"></canvas>
+
+    <script src="./load_shader.js"></script>
+    <script src="./learn_webgl_matrix.js"></script>
+    <script src="./learn_webgl_vector3.js"></script>
+    <script src="./learn_webgl_point4.js"></script>
+
+    <script id="vertex-shader-3d" type="x-shader/x-vertex">
+      // vertex shader
+      precision mediump int;
+      precision mediump float;
+
+      attribute vec3 a_Color;
+
+      uniform mat4 u_Transform;
+      attribute vec3 a_position;
+
+      uniform vec4 v_Color;
+
+      void main() {
+        gl_Position = u_Transform * vec4(a_position, 1.0);
+      }
+
+    </script>
+
+    <script id="fragment-shader-3d" type="x-shader/x-fragment">
+      // Fragment shader program
+      precision mediump int;
+      precision mediump float;
+
+      uniform vec4 v_Color;
+
+      void main() {
+        gl_FragColor = v_Color;
+      }
+    </script>
+
+    <script>
+
+      function main() {
+        var canvas = document.getElementById("c");
+        var gl = canvas.getContext("webgl");
+
+        if (!gl) {
+          return;
+        }
+
+        // Clear the canvas
+        gl.clearColor(1.0, 1.0, 1.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.enable(gl.DEPTH_TEST);
+
+        var loadShader = new load_shader();
+        var vertexShader = loadShader.loadVertexShader(gl, "vertex-shader-3d");
+        var fragmentShader = loadShader.loadFragmentShader(gl, "fragment-shader-3d");
+
+        var program = loadShader.createProgram(gl, vertexShader, fragmentShader);
+
+        // Tell it to use our program (pair of shaders)
+        gl.useProgram(program);
+
+        var positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+        var colorLocation = gl.getUniformLocation(program, "v_Color");
+        var transformLocation = gl.getUniformLocation(program, "u_Transform");
+
+        var vertices = [
+          [ 0.0, -0.25, -0.50],
+          [ 0.0,  0.25,  0.00],
+          [ 0.5, -0.25,  0.25],
+          [-0.5, -0.25,  0.25]
+        ];
+
+        // 四个三角面
+        var triangle1 = [
+          vertices[2], vertices[1], vertices[3]
+        ];
+        var triangle2 = [
+          vertices[3], vertices[1], vertices[0]
+        ];
+        var triangle3 = [
+          vertices[0], vertices[1], vertices[2]
+        ];
+        var triangle4 = [
+          vertices[0], vertices[2], vertices[3]
+        ];
+
+        var triangles = [
+          triangle1, triangle2, triangle3, triangle4
+        ];
+
+        var number_triangles = triangles.length;
+        var number_vertices = number_triangles * 3;
+        var vertices3 = new Float32Array(number_vertices * 3);
+        var color_array = new Float32Array(number_vertices * 3);
+        var texture_array = new Float32Array(number_vertices * 2);
+
+        let nv = 0;
+        for (let i = 0; i < triangles.length; i += 1) {
+          var triangle = triangles[i];
+
+          for (let j = 0; j < 3; j += 1) {
+            let vertex = triangle[j];
+
+            for (let m = 0; m < 3; m += 1, nv += 1) {
+              vertices3[nv] = vertex[m];
+            }
+          }
+        }
+
+        var color_array = new Float32Array([1.0, 0.0, 0.0, 1.0]);
+
+        var positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices3, gl.STATIC_DRAW);
+
+        var colorBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, color_array, gl.STATIC_DRAW);
+
+        var matrix = new Learn_webgl_matrix();
+        var transform = matrix.create();
+        //var projection = matrix.createOrthographic(-1,1,-1,1,-1,1);
+        var projection = matrix.createPerspective(30.0, 1.0, 0.5, 100.0);
+        var rotate_x_matrix = matrix.create();
+        var rotate_y_matrix = matrix.create();
+
+        var angle_x = 0.0;
+        var angle_y = 0.0;
+
+        matrix.rotate(rotate_x_matrix, angle_x, 1, 0, 0);
+        matrix.rotate(rotate_y_matrix, angle_y, 0, 1, 0);
+
+        var camera = matrix.create();
+        var camera_distance = 30;
+
+        var eyex = 0;
+        var eyey = 0;
+        var eyez = 5;
+
+        var dist;
+
+        // 计算三坐标轴的位置和方向
+        // Calculate and set the camera for the entire rendering
+        var ex = Math.sin(angle_x) * camera_distance;
+        var ez = Math.cos(angle_x) * camera_distance;
+        var ey = Math.sin(angle_y) * camera_distance;
+        dist = Math.sqrt( ex*ex + ey*ey + ez*ez);
+        ex = (ex / dist) * camera_distance;
+        ey = (ey / dist) * camera_distance;
+        ez = (ez / dist) * camera_distance;
+        matrix.lookAt(camera, ex, ey, ez, 0, 0, 0, 0, 1, 0);
+
+        matrix.multiplySeries(transform, projection, camera); //, rotate_x_matrix, rotate_y_matrix);
+
+        gl.uniformMatrix4fv(transformLocation, false, transform);
+        gl.uniform4fv(colorLocation, color_array);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.vertexAttribPointer(positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(positionAttributeLocation);
+
+        gl.drawArrays(gl.TRIANGLES, 0, number_triangles * 3);
+      }
+
+      main();
+
+    </script>
+  </body>
+</html>

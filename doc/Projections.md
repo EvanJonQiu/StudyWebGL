@@ -140,7 +140,7 @@ convertToLeftHanded = | 1,  0,  0,  0 |
 
 ### 定义视锥体
 由两种方法来定义视锥体:
-1. 函数`createPerspective()`模拟相机的尽头，相机处于全局原点向下看向-z轴.
+1. 函数`createPerspective()`模拟相机的镜头，相机处于全局原点向下看向-z轴.
 2. 函数`createFrustum() `定义了一个平行于x-y平面的二维视窗。相机可以被放置在这个x-y平面的任何位置，但是总是向下看向-z轴。这个函数的常见用途是为一个场景渲染两个不同的视图，一个模拟用户的左眼，另一个模拟用户的右眼。如果两个视图正确的偏移渲染(If the two renderings are offset correctly)，并且分别显示到用户的眼睛中，用户就可以看到一个三维场景。这就是创建虚拟现实( virtual reality)的方式。
 
 #### 第一种方式`createPerspective()`
