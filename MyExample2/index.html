@@ -1,0 +1,405 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>Extend the SceneView WebGL engine | Sample | ArcGIS API for JavaScript 4.21</title>
+
+    <link rel="stylesheet" href="https://js.arcgis.com/4.22/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.22/"></script>
+
+    <style>
+      html,
+      body,
+      #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+
+    <script src="./learn_webgl_matrix.js"></script>
+    <script src="./learn_webgl_vector3.js"></script>
+    <script src="./learn_webgl_point4.js"></script>
+
+    <!-- A simple fragment shader -->
+    <script id="shader-fs" type="x-shader/x-fragment">
+      precision mediump float;
+
+      uniform vec4 v_Color;
+
+      void main(void) {
+        gl_FragColor = v_Color;
+      }
+    </script>
+
+    <!-- A simple vertex shader -->
+    <script id="shader-vs" type="x-shader/x-vertex">
+      attribute vec3 aVertexPosition;
+      uniform mat4 uModelViewMatrix;
+      uniform mat4 uProjectionMatrix;
+
+      uniform vec4 v_Color;
+
+      void main(void) {
+        gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aVertexPosition, 1.0);
+      }
+    </script>
+
+    <script>
+      require([
+        "esri/core/Accessor",
+        "esri/Map",
+        "esri/views/SceneView",
+        "esri/views/3d/externalRenderers",
+        "esri/geometry/Extent",
+        "./gl-matrix.js",
+      ], (Accessor, Map, SceneView, externalRenderers, Extent, glMatrix) => {
+        /*********************
+         * Settings
+         *********************/
+
+        // The clipping extent for the scene (in WGS84)
+        const mapExtent = new Extent({
+          xmax: -130,
+          xmin: -100,
+          ymax: 40,
+          ymin: 20,
+          spatialReference: {
+            wkid: 4326
+          }
+        });
+
+        const inputSR = {
+          wkid: 3857
+        };
+
+        /*********************
+         * Create a map
+         *********************/
+         const map = new Map({
+          basemap: "hybrid",
+          ground: "world-elevation"
+        });
+
+        /*********************
+         * Create a scene view
+         *********************/
+        const view = new SceneView({
+          container: "viewDiv",
+          map: map,
+          viewingMode: "global",
+          clippingArea: mapExtent,
+          extent: mapExtent,
+          camera: {
+            position: {
+              x: -12977859.07,
+              y: 4016696.94,
+              z: 348.61,
+              spatialReference: { wkid: 102100 }
+            },
+            heading: 316,
+            tilt: 85
+          }
+        });
+
+        view.when(() => {
+          const myExternalRenderer = new MyExternalRenderer(view);
+          externalRenderers.add(view, myExternalRenderer);
+        });
+
+        const MyExternalRenderer = Accessor.createSubclass({
+          view: null,
+
+          program: null,
+          programAttribVertexPosition: null,
+          programUniformProjectionMatrix: null,
+          programUniformModelViewMatrix: null,
+          colorLocation: null,
+
+          localOrigin: null,
+
+          inputToRender: null,
+
+          windmillBasePositions: null,
+          windmillBaseIndices: null,
+          windmillInstanceTowerScale: 100,
+
+          vboBasePositions: null,
+          iboBase: null,
+
+          tempMatrix4: new Float32Array(16),
+
+          constructor: function(view) {
+            this.view = view;
+          },
+
+          setup: function(context) {
+            this.initShaders(context);
+            this.initData(context);
+            // cleanup
+            context.resetWebGLState();
+          },
+
+          render: function(context) {
+            const gl = context.gl;
+            const time = Date.now() / 1000.0;
+
+            // Set some global WebGL state
+            // State will be reset between each render() call
+            gl.enable(gl.DEPTH_TEST);
+            gl.disable(gl.CULL_FACE);
+            gl.disable(gl.BLEND);
+
+            // Enable our shader
+            gl.useProgram(this.program);
+            this.setCommonUniforms(context);
+
+            // Draw all the bases (one draw call)
+            this.bindWindmillBase(context);
+
+            const matrix = new Learn_webgl_matrix();
+
+            //glMatrix.mat4.identity(this.tempMatrix4);
+            matrix.setIdentity(this.tempMatrix4);
+
+            // Apply local origin by translation the view matrix by the local origin, this will
+            // put the view origin (0, 0, 0) at the local origin
+            //glMatrix.mat4.translate(this.tempMatrix4, this.tempMatrix4, this.localOriginRender);
+            matrix.translate(this.tempMatrix4, this.localOriginRender[0], this.localOriginRender[1], this.localOriginRender[2]);
+            
+            // z轴抬高
+            //glMatrix.mat4.translate(this.tempMatrix4, this.tempMatrix4, [1, 1, 100]);
+            var m = matrix.create();
+            matrix.setIdentity(m);
+            matrix.translate(m, 1, 1, 100);
+            matrix.multiply(this.tempMatrix4, this.tempMatrix4, m);
+
+            //glMatrix.mat4.multiply(this.tempMatrix4, context.camera.viewMatrix, this.tempMatrix4);
+            matrix.multiply(this.tempMatrix4, context.camera.viewMatrix, this.tempMatrix4);
+
+            gl.uniformMatrix4fv(this.programUniformModelViewMatrix, false, this.tempMatrix4);
+
+            gl.drawElements(gl.TRIANGLES, this.windmillBaseIndices.length, gl.UNSIGNED_SHORT, 0);
+          },
+
+          bindWindmillBase: function (context) {
+            const gl = context.gl;
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.vboBasePositions);
+            gl.enableVertexAttribArray(this.programAttribVertexPosition);
+            gl.vertexAttribPointer(this.programAttribVertexPosition, 3, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.iboBase);
+          },
+
+          setCommonUniforms: function (context) {
+            const gl = context.gl;
+            const camera = context.camera;
+
+            gl.uniformMatrix4fv(this.programUniformProjectionMatrix, false, context.camera.projectionMatrix);
+
+            var color_array = new Float32Array([1.0, 0.0, 0.0, 1.0]);
+            gl.uniform4fv(this.colorLocation, color_array);
+          },
+
+          initData: function(context) {
+            const gl = context.gl;
+
+            // 将当前地图的中心点作为局部原点
+            const localOriginSR = mapExtent.center.spatialReference;
+            this.localOrigin = [mapExtent.center.x, mapExtent.center.y, 0];
+
+            // 将局部原点转换成内部渲染坐标
+            this.localOriginRender = externalRenderers.toRenderCoordinates(
+              view,
+              this.localOrigin,
+              0,
+              localOriginSR,
+              new Float32Array(3),
+              0,
+              1
+            );
+
+            // 三维体渲染的位置坐标
+            const point = [-12977859.07, 4016696.94, 348.61];
+
+            // 将三维体的位置坐标转换成虚拟世界中的坐标
+            const inputToRender = externalRenderers.renderCoordinateTransformAt(
+              view,
+              point,
+              inputSR,
+              new Float64Array(16)
+            );
+
+            // 三维体数据
+            var vertices = [
+              [ 0.0, -0.25, -0.50],
+              [ 0.0,  0.25,  0.00],
+              [ 0.5, -0.25,  0.25],
+              [-0.5, -0.25,  0.25]
+            ];
+            var number_triangles = 4;
+            var number_vertices = number_triangles * 3;
+
+            // 三维体的顶点索引
+            var indicates = new Uint16Array([2, 1, 3, 3, 1, 0, 0, 1, 2, 0, 2, 3]);
+
+            this.windmillBasePositions = new Float64Array(number_vertices * 3);
+            this.windmillBaseIndices = new Uint16Array(indicates.length);
+
+            var vertices4 = new Float32Array(number_vertices * 3);
+
+            var nv = 0;
+            for (let z = 0; z < 3; z++) {
+              for (let i = 0; i < vertices.length; i++) {
+                var points = vertices[i];
+                for (let j = 0; j < 3; j++, nv += 1) {
+                  vertices4[nv] = points[j];
+                }
+              }
+            }
+
+            const positionMatrix = new Float64Array(16);
+            const matrix = new Learn_webgl_matrix();
+            // 单位矩阵
+            //glMatrix.mat4.identity(positionMatrix);
+            matrix.setIdentity(positionMatrix);
+            // 变换矩阵
+            //glMatrix.mat4.multiply(positionMatrix, inputToRender, positionMatrix);
+            matrix.multiply(positionMatrix, inputToRender, positionMatrix);
+
+            const numCoordinates = vertices4.length;
+            const numVertices = numCoordinates / 3;
+            // 将三维体所有顶点坐标进行缩放
+            for (let j = 0; j < numCoordinates; ++j) {
+              this.windmillBasePositions[j] = vertices4[j] * this.windmillInstanceTowerScale;
+            }
+
+            // 对三维体的所有顶点坐标进行位置变换
+            glMatrix.vec3.forEach(
+              this.windmillBasePositions,
+              0,
+              0,
+              numVertices,
+              glMatrix.vec3.transformMat4,
+              positionMatrix
+            );
+
+            // 这个地方我不是太明白
+            glMatrix.vec3.forEach(
+              this.windmillBasePositions,
+              0,
+              0,
+              numVertices,
+              glMatrix.vec3.subtract,
+              this.localOriginRender
+            );
+
+            const numIndices = indicates.length;
+            for (let j = 0; j < numIndices; ++j) {
+              this.windmillBaseIndices[j] = indicates[j];
+            }
+
+            this.vboBasePositions = this.createVertexBuffer(gl, this.windmillBasePositions);
+            this.iboBase = this.createIndexBuffer(gl, this.windmillBaseIndices);
+          },
+
+          initShaders: function (context) {
+            const gl = context.gl;
+
+            const fragmentShader = this.getShader(gl, "shader-fs");
+            const vertexShader = this.getShader(gl, "shader-vs");
+            this.program = this.linkProgram(gl, fragmentShader, vertexShader);
+            if (!this.program) {
+              alert("Could not initialise shaders");
+            }
+
+            gl.useProgram(this.program);
+
+            this.programAttribVertexPosition = gl.getAttribLocation(this.program, "aVertexPosition");
+            gl.enableVertexAttribArray(this.programAttribVertexPosition);
+
+            this.programUniformProjectionMatrix = gl.getUniformLocation(this.program, "uProjectionMatrix");
+            this.programUniformModelViewMatrix = gl.getUniformLocation(this.program, "uModelViewMatrix");
+
+            this.colorLocation = gl.getUniformLocation(this.program, "v_Color");
+          },
+
+          getShader: function (gl, id) {
+            const shaderScript = document.getElementById(id);
+            if (!shaderScript) {
+              return null;
+            }
+
+            let str = "";
+            let k = shaderScript.firstChild;
+            while (k) {
+              if (k.nodeType == 3) {
+                str += k.textContent;
+              }
+              k = k.nextSibling;
+            }
+
+            let shader;
+            if (shaderScript.type == "x-shader/x-fragment") {
+              shader = gl.createShader(gl.FRAGMENT_SHADER);
+            } else if (shaderScript.type == "x-shader/x-vertex") {
+              shader = gl.createShader(gl.VERTEX_SHADER);
+            } else {
+              return null;
+            }
+
+            gl.shaderSource(shader, str);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+              alert(gl.getShaderInfoLog(shader));
+              return null;
+            }
+
+            return shader;
+          },
+
+          linkProgram: function (gl, fragmentShader, vertexShader) {
+            const shaderProgram = gl.createProgram();
+
+            gl.attachShader(shaderProgram, vertexShader);
+            gl.attachShader(shaderProgram, fragmentShader);
+            gl.linkProgram(shaderProgram);
+
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+              return null;
+            }
+
+            return shaderProgram;
+          },
+
+          createVertexBuffer: function (gl, data) {
+            const buffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+
+            // We have filled vertex buffers in 64bit precision,
+            // convert to a format compatible with WebGL
+            const float32Data = new Float32Array(data);
+
+            gl.bufferData(gl.ARRAY_BUFFER, float32Data, gl.STATIC_DRAW);
+            return buffer;
+          },
+
+          createIndexBuffer: function (gl, data) {
+            const buffer = gl.createBuffer();
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, data, gl.STATIC_DRAW);
+            return buffer;
+          },
+
+        });
+
+      });
+    </script>
+  </head>
+
+  <body>
+    <div id="viewDiv"></div>
+  </body>
+</html>

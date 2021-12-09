@@ -102,7 +102,6 @@
         var number_vertices = number_triangles * 3;
         var vertices3 = new Float32Array(number_vertices * 3);
         var color_array = new Float32Array(number_vertices * 3);
-        var texture_array = new Float32Array(number_vertices * 2);
 
         let nv = 0;
         for (let i = 0; i < triangles.length; i += 1) {
@@ -117,11 +116,27 @@
           }
         }
 
+        var vertices4 = new Float32Array(number_vertices * 3);
+        nv = 0;
+        for (let i = 0; i < vertices.length; i++) {
+          var points = vertices[i];
+          for (let j = 0; j < 3; j++, nv += 1) {
+            vertices4[nv] = points[j];
+          }
+        }
+
+        var indicates = new Uint16Array([2, 1, 3, 3, 1, 0, 0, 1, 2, 0, 2, 3]);
+
         var color_array = new Float32Array([1.0, 0.0, 0.0, 1.0]);
 
         var positionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, vertices3, gl.STATIC_DRAW);
+        //gl.bufferData(gl.ARRAY_BUFFER, vertices3, gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices4, gl.STATIC_DRAW);
+
+        var indicatesBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicatesBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicates, gl.STATIC_DRAW);
 
         var colorBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
@@ -169,7 +184,8 @@
         gl.vertexAttribPointer(positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(positionAttributeLocation);
 
-        gl.drawArrays(gl.TRIANGLES, 0, number_triangles * 3);
+        //gl.drawArrays(gl.TRIANGLES, 0, number_triangles * 3);
+        gl.drawElements(gl.TRIANGLES, indicates.length, gl.UNSIGNED_SHORT, 0);
       }
 
       main();
