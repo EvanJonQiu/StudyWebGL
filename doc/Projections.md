@@ -121,8 +121,11 @@ convertToLeftHanded = | 1,  0,  0,  0 |
 ```
 
 **从概念上讲，正交变换由这三个从右到左应用的顺序变换组成**（原文翻译)
+
 ![正交变换计算公式](./pic/orthographic_projection_tran.png)<br/>
+
 简化后可得<br/>
+
 ![简化后](./pic/orthographic_projection_tran_2.png)<br/>
 
 正交投影不会修改顶点的 (x,y) 值之间的相对关系，因此对象的大小不会随着它靠近或远离相机而改变。
@@ -134,7 +137,7 @@ convertToLeftHanded = | 1,  0,  0,  0 |
 ## 透视投影
 
 ### 透视投影的视锥体
-透视投影定义了一个 3D 区域，该区域沿着四个边界射线从相机的位置投影出来。该区域称为视锥体，如下图:<br>
+透视投影定义了一个 3D 区域，该区域沿着四个边界射线从相机的位置投影出来。该区域称为视锥体[^1]，如下图:<br>
 ![视锥体](./pic/viewing_frustum.png)<br/>
 这个视锥体包含两个平行于x-y平面的前切平面和后切平面.任何锥体内的模型都将被渲染，而锥体外的模型将被裁切。
 
@@ -407,3 +410,5 @@ function createFrustumUsingPerspective (left, right, bottom, top, near, far) {
 后续：
 
 1. [视角](./viewports.md)
+
+[^1]: [视锥体](https://en.wikipedia.org/wiki/Viewing_frustum)

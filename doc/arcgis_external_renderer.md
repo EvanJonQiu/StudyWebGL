@@ -156,19 +156,37 @@ const MyExternalRenderer = Accessor.createSubclass({
     // Draw all the bases (one draw call)
     this.bindWindmillBase(context);
 ```
+下面的代码中，使用`/* code */`注释的代码，是采用之前的矩阵变换库的写法。
 
 ```javascript
     // 单位矩阵
     glMatrix.mat4.identity(this.tempMatrix4);
+    /*
+    const matrix = new Learn_webgl_matrix();
+    matrix.setIdentity(this.tempMatrix4);
+    */
 
     // Apply local origin by translation the view matrix by the local origin, this will
     // put the view origin (0, 0, 0) at the local origin
     glMatrix.mat4.translate(this.tempMatrix4, this.tempMatrix4, this.localOriginRender);
+    /*
+    matrix.translate(this.tempMatrix4, this.localOriginRender[0], this.localOriginRender[1], this.localOriginRender[2]);
+    */
 
     // 加入地表图层后，三角体会被地表淹没，所以将所有三角体沿z轴上移。
     glMatrix.mat4.translate(this.tempMatrix4, this.tempMatrix4, [1, 1, 100]);
+    /* 
+    var m = matrix.create();
+    matrix.setIdentity(m);
+    matrix.translate(m, 1, 1, 100);
+    matrix.multiply(this.tempMatrix4, this.tempMatrix4, m);
+    */
 
     glMatrix.mat4.multiply(this.tempMatrix4, context.camera.viewMatrix, this.tempMatrix4);
+    /*
+    matrix.multiply(this.tempMatrix4, context.camera.viewMatrix, this.tempMatrix4);
+    */
+
     gl.uniformMatrix4fv(this.programUniformModelViewMatrix, false, this.tempMatrix4);
 
     gl.drawElements(gl.TRIANGLES, this.windmillBaseIndices.length, gl.UNSIGNED_SHORT, 0);
@@ -301,6 +319,8 @@ const MyExternalRenderer = Accessor.createSubclass({
 
 按照代码中的注释，局部原点选择的是map的中心点，然后调用 `externalRenderers.toRenderCoordinates` 对这个局部原点进行转换，转换成内部渲染坐标。
 
+在 `Learn WebGL` 的[8.3](http://learnwebgl.brown37.net/08_projections/projections_perspective.html)中，介绍创建两种透视投影的方式，从代码中可以看出ArcGIS使用的是第二种方式 `createFrustum()`。
+
 ```javascript
     // Choose a local origin.
     // In our case, we simply use the map center.
@@ -417,9 +437,38 @@ self.scale = function (result, v0, s) {
       for (let j = 0; j < numCoordinates; ++j) {
         this.windmillBasePositions[i * numCoordinates + j] = vertices4[j] * this.windmillInstanceTowerScale[i];
       }
+
+      /*
+      let vector3 = new Learn_webgl_vector3();
+
+      for (let j = 0; j < numCoordinates; j += 3) {
+        let v = vector3.create(vertices4[j], vertices4[j + 1], vertices4[j + 2]);
+        vector3.scale(v, v, this.windmillInstanceTowerScale);
+        this.windmillBasePositions[j] = v[0];
+        this.windmillBasePositions[j + 1] = v[1];
+        this.windmillBasePositions[j + 2] = v[2];
+      }
+      */
 ```
 
-接下来就将对这些顶点进行坐标转换
+接下来就将对这些顶点进行坐标转换，是将每个顶点向量与转换矩阵进行叉乘并且每个分量分别加上dx, dy, dz;
+
+这里需要说明的是，由向量(x, y, z, w)定义的点在三维空间中的坐标应该为(x/w, y/w, z/w)，因此在下面（注释中的代码）采用直白的方式说明了此处的计算公式。
+
+```javascript
+| x1 x2 x3 m1 |
+| y1 y2 y3 m2 | * (x, y, z)
+| z1 z2 z3 m3 |
+| 0  0  0  1  |
+
+w = x * m1 + y * m2 + z * m3 + 1;
+// 一般情况下w应该为1.0
+w = w || 1.0;
+
+out[0] = (x1 * x + y1 * y + z1 * z) / w
+out[1] = (x2 * x + y2 * y + z2 * z) / w
+out[2] = (x3 * x + y3 * y + z3 * z) / w
+```
 
 ```javascript
       // Transform vertices into render coordinates
@@ -431,6 +480,19 @@ self.scale = function (result, v0, s) {
         glMatrix.vec3.transformMat4,
         positionMatrix
       );
+
+      /* 下面的代码中，默认认为w等于1，所以偷懒，各分量没有除以w
+      for (let i = 0; i < numCoordinates; i += 3) {
+        let v = vector3.create(this.windmillBasePositions[i], this.windmillBasePositions[i + 1], this.windmillBasePositions[i + 2]);
+        matrix.multiplyV3(v, positionMatrix, v);
+        v[0] += positionMatrix[12];
+        v[1] += positionMatrix[13];
+        v[2] += positionMatrix[14];
+        this.windmillBasePositions[i] = v[0];
+        this.windmillBasePositions[i + 1] = v[1];
+        this.windmillBasePositions[i + 2] = v[2];
+      }
+      */
 ```
 **这里不是太明白, 为什么要减去局部原点？**
 ```javascript

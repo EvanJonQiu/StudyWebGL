@@ -221,16 +221,37 @@
               1
             );
 
-            // 三维体渲染的位置坐标
-            const point = [-12977859.07, 4016696.94, 348.61];
+            const count = 2;
+            const positions = new Array(count);
+            const pointArray = [
+              [-12975988.504331276, 4012069.4575860533, 218.814086914063],
+              [-12977859.07, 4016696.94, 348.61],
+              
+            ];
 
-            // 将三维体的位置坐标转换成虚拟世界中的坐标
-            const inputToRender = externalRenderers.renderCoordinateTransformAt(
-              view,
-              point,
-              inputSR,
-              new Float64Array(16)
-            );
+            for (let i = 0; i < count; i += 1) {
+              const point = [pointArray[i][0], pointArray[i][1], pointArray[i][2]];
+
+              // 将三维体的位置坐标转换成虚拟世界中的坐标
+              const inputToRender = externalRenderers.renderCoordinateTransformAt(
+                view,
+                point,
+                inputSR,
+                new Float64Array(16)
+              );
+              positions[i] = inputToRender;
+            }
+
+            // // 三维体渲染的位置坐标
+            // const point = [-12977859.07, 4016696.94, 348.61];
+
+            // // 将三维体的位置坐标转换成虚拟世界中的坐标
+            // const inputToRender = externalRenderers.renderCoordinateTransformAt(
+            //   view,
+            //   point,
+            //   inputSR,
+            //   new Float64Array(16)
+            // );
 
             // 三维体数据
             var vertices = [
@@ -245,82 +266,122 @@
             // 三维体的顶点索引
             var indicates = new Uint16Array([2, 1, 3, 3, 1, 0, 0, 1, 2, 0, 2, 3]);
 
-            this.windmillBasePositions = new Float64Array(number_vertices * 3);
-            this.windmillBaseIndices = new Uint16Array(indicates.length);
+            this.windmillBasePositions = new Float64Array(number_vertices * count);
+            this.windmillBaseIndices = new Uint16Array(indicates.length * count);
 
-            var vertices4 = new Float32Array(number_vertices * 3);
+            var vertices4 = new Float32Array(number_vertices);
 
             var nv = 0;
-            for (let z = 0; z < 3; z++) {
-              for (let i = 0; i < vertices.length; i++) {
-                var points = vertices[i];
-                for (let j = 0; j < 3; j++, nv += 1) {
-                  vertices4[nv] = points[j];
-                }
+            for (let i = 0; i < vertices.length; i++) {
+              const points = vertices[i];
+              for (let j = 0; j < 3; j++, nv += 1) {
+                vertices4[nv] = points[j];
               }
             }
 
-            const positionMatrix = new Float64Array(16);
-            const matrix = new Learn_webgl_matrix();
-            // 单位矩阵
-            //glMatrix.mat4.identity(positionMatrix);
-            matrix.setIdentity(positionMatrix);
-            // 变换矩阵
-            //glMatrix.mat4.multiply(positionMatrix, inputToRender, positionMatrix);
-            matrix.multiply(positionMatrix, inputToRender, positionMatrix);
+            for (let i = 0; i < count; i += 1) {
+              const positionMatrix = new Float64Array(16);
+              //const matrix = new Learn_webgl_matrix();
+              // 单位矩阵
+              glMatrix.mat4.identity(positionMatrix);
+              //matrix.setIdentity(positionMatrix);
+              // 变换矩阵
+              glMatrix.mat4.multiply(positionMatrix, positions[i], positionMatrix);
+              //matrix.multiply(positionMatrix, positions[i], positionMatrix);
 
-            const numCoordinates = vertices4.length;
-            const numVertices = numCoordinates / 3;
-            // 将三维体所有顶点坐标进行缩放
-            // for (let j = 0; j < numCoordinates; ++j) {
-            //   this.windmillBasePositions[j] = vertices4[j] * this.windmillInstanceTowerScale;
-            // }
+              const numCoordinates = vertices4.length;
+              const numVertices = numCoordinates / 3;
 
-            let vector3 = new Learn_webgl_vector3();
+              for (let j = 0; j < numCoordinates; ++j) {
+                this.windmillBasePositions[i * numCoordinates + j] = vertices4[j] * this.windmillInstanceTowerScale;
+              }
 
-            for (let j = 0; j < numCoordinates; j += 3) {
-              let v = vector3.create(vertices4[j], vertices4[j + 1], vertices4[j + 2]);
-              vector3.scale(v, v, this.windmillInstanceTowerScale);
-              this.windmillBasePositions[j] = v[0];
-              this.windmillBasePositions[j + 1] = v[1];
-              this.windmillBasePositions[j + 2] = v[2];
+              glMatrix.vec3.forEach(
+                this.windmillBasePositions,
+                0,
+                i * numCoordinates,
+                numVertices,
+                glMatrix.vec3.transformMat4,
+                positionMatrix
+              );
+
+              // 这个地方我不是太明白
+              glMatrix.vec3.forEach(
+                this.windmillBasePositions,
+                0,
+                i * numCoordinates,
+                numVertices,
+                glMatrix.vec3.subtract,
+                this.localOriginRender
+              );
+
+              const numIndices = indicates.length;
+              for (let j = 0; j < numIndices; ++j) {
+                this.windmillBaseIndices[i * numIndices + j] = indicates[j] + i * numVertices;
+              }
             }
 
-            // 对三维体的所有顶点坐标进行位置变换
+            // const positionMatrix = new Float64Array(16);
+            // const matrix = new Learn_webgl_matrix();
+            // // 单位矩阵
+            // //glMatrix.mat4.identity(positionMatrix);
+            // matrix.setIdentity(positionMatrix);
+            // // 变换矩阵
+            // //glMatrix.mat4.multiply(positionMatrix, inputToRender, positionMatrix);
+            // matrix.multiply(positionMatrix, inputToRender, positionMatrix);
+
+            // const numCoordinates = vertices4.length;
+            // const numVertices = numCoordinates / 3;
+            // // 将三维体所有顶点坐标进行缩放
+            // // for (let j = 0; j < numCoordinates; ++j) {
+            // //   this.windmillBasePositions[j] = vertices4[j] * this.windmillInstanceTowerScale;
+            // // }
+
+            // let vector3 = new Learn_webgl_vector3();
+
+            // for (let j = 0; j < numCoordinates; j += 3) {
+            //   let v = vector3.create(vertices4[j], vertices4[j + 1], vertices4[j + 2]);
+            //   vector3.scale(v, v, this.windmillInstanceTowerScale);
+            //   this.windmillBasePositions[j] = v[0];
+            //   this.windmillBasePositions[j + 1] = v[1];
+            //   this.windmillBasePositions[j + 2] = v[2];
+            // }
+
+            // // 对三维体的所有顶点坐标进行位置变换
+            // // glMatrix.vec3.forEach(
+            // //   this.windmillBasePositions,
+            // //   0,
+            // //   0,
+            // //   numVertices,
+            // //   glMatrix.vec3.transformMat4,
+            // //   positionMatrix
+            // // );
+
+            // for (let i = 0; i < numCoordinates; i += 3) {
+            //   let v = vector3.create(this.windmillBasePositions[i], this.windmillBasePositions[i + 1], this.windmillBasePositions[i + 2]);
+            //   matrix.multiplyV3(v, positionMatrix, v);
+            //   v[0] += positionMatrix[12];
+            //   v[1] += positionMatrix[13];
+            //   v[2] += positionMatrix[14];
+            //   this.windmillBasePositions[i] = v[0];
+            //   this.windmillBasePositions[i + 1] = v[1];
+            //   this.windmillBasePositions[i + 2] = v[2];
+            // }
+
+            // // 这个地方我不是太明白
             // glMatrix.vec3.forEach(
             //   this.windmillBasePositions,
             //   0,
             //   0,
             //   numVertices,
-            //   glMatrix.vec3.transformMat4,
-            //   positionMatrix
+            //   glMatrix.vec3.subtract,
+            //   this.localOriginRender
             // );
 
-            for (let i = 0; i < numCoordinates; i += 3) {
-              let v = vector3.create(this.windmillBasePositions[i], this.windmillBasePositions[i + 1], this.windmillBasePositions[i + 2]);
-              matrix.multiplyV3(v, positionMatrix, v);
-              v[0] += positionMatrix[12];
-              v[1] += positionMatrix[13];
-              v[2] += positionMatrix[14];
-              this.windmillBasePositions[i] = v[0];
-              this.windmillBasePositions[i + 1] = v[1];
-              this.windmillBasePositions[i + 2] = v[2];
-            }
-
-            // 这个地方我不是太明白
-            glMatrix.vec3.forEach(
-              this.windmillBasePositions,
-              0,
-              0,
-              numVertices,
-              glMatrix.vec3.subtract,
-              this.localOriginRender
-            );
-
-            const numIndices = indicates.length;
-            for (let j = 0; j < numIndices; ++j) {
-              this.windmillBaseIndices[j] = indicates[j];
-            }
+            // const numIndices = indicates.length;
+            // for (let j = 0; j < numIndices; ++j) {
+            //   this.windmillBaseIndices[j] = indicates[j];
+            // }
 
             this.vboBasePositions = this.createVertexBuffer(gl, this.windmillBasePositions);
             this.iboBase = this.createIndexBuffer(gl, this.windmillBaseIndices);
