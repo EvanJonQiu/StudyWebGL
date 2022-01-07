@@ -46,11 +46,11 @@
 ### SECTION 5: Rendering Basics
 * [5.1 - Introduction to Rendering](./5_rendering_basics/introduction.md) *
 * [5.2 - A Primer on Shaders](./5_rendering_basics/shader_primer.md) *
-* [5.3 - A Primer on Buffer Objects](./5_rendering_basics/placeholder.md)
-* [5.4 - A Simple Model](./5_rendering_basics/placeholder.md)
-* [5.5 - Example 1: One Color per Model](./5_rendering_basics/placeholder.md)
-* [5.6 - Example 2: One Color per Triangle](./5_rendering_basics/placeholder.md)
-* [5.7 - Example 3: One Color per Vertex](./5_rendering_basics/placeholder.md)
-* [5.8 - Example 4: Textures](./5_rendering_basics/placeholder.md)
-* [5.9 - Interleaved Buffers](./5_rendering_basics/placeholder.md)
-* [5.10 - Converting OBJ Model Data to Buffer Objects](./5_rendering_basics/placeholder.md)
+* [5.3 - A Primer on Buffer Objects](./5_rendering_basics/buffer_object_primer.md) *
+* [5.4 - A Simple Model](./5_rendering_basics/simple_model.md) *
+* [5.5 - Example 1: One Color per Model](./5_rendering_basics/render_example_01.md) *
+* [5.6 - Example 2: One Color per Triangle](./5_rendering_basics/render_example_02.md) *
+* [5.7 - Example 3: One Color per Vertex](./5_rendering_basics/render_example_03.md) *
+* [5.8 - Example 4: Textures](./5_rendering_basics/render_example_04_textures.md) *
+* [5.9 - Interleaved Buffers](./5_rendering_basics/interleaved_buffers.md) *
+* [5.10 - Converting OBJ Model Data to Buffer Objects](./5_rendering_basics/obj_to_buffers.md) *
