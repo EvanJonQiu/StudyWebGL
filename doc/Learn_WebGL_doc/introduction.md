@@ -54,3 +54,17 @@
 * [5.8 - Example 4: Textures](./5_rendering_basics/render_example_04_textures.md) *
 * [5.9 - Interleaved Buffers](./5_rendering_basics/interleaved_buffers.md) *
 * [5.10 - Converting OBJ Model Data to Buffer Objects](./5_rendering_basics/obj_to_buffers.md) *
+
+### SECTION 6: Model Transformations
+* [6.1 - Introduction to Transformations](./6_model_transformations/transformations_introduction.md) *
+* [6.2 - Scaling](./6_model_transformations/transformations_scale.md) *
+* [6.3 - Translating](./6_model_transformations/transformations_translate.md) *
+* [6.4 - Rotating](./6_model_transformations/transformations_rotate.md) *
+* [6.5 - Transformation Matrices](./6_model_transformations/transformations_matrices.md) *
+* [6.6 - A Matrix Code Library - Learn_webgl_matrix](./6_model_transformations/matrix_library_introduction.md) *
+* [6.7 - Using Learn_webgl_matrix - A Robot Arm Base](./6_model_transformations/transformations_example1.md) *
+* [6.8 - Chaining Transformations - Adding a Forearm](./6_model_transformations/transformations_example2.md) *
+* [6.9 - Chaining Transformations - Adding an Upper Arm](./6_model_transformations/transformations_example3.md) *
+* [6.10 - Chaining Transformations (Summary)](./6_model_transformations/placeholder.md)
+* [6.11 - More Matrix Math Concepts](./6_model_transformations/placeholder.md)
+* [6.12 - Coding Issues](./6_model_transformations/placeholder.md)
