@@ -65,6 +65,6 @@
 * [6.7 - Using Learn_webgl_matrix - A Robot Arm Base](./6_model_transformations/transformations_example1.md) *
 * [6.8 - Chaining Transformations - Adding a Forearm](./6_model_transformations/transformations_example2.md) *
 * [6.9 - Chaining Transformations - Adding an Upper Arm](./6_model_transformations/transformations_example3.md) *
-* [6.10 - Chaining Transformations (Summary)](./6_model_transformations/placeholder.md)
-* [6.11 - More Matrix Math Concepts](./6_model_transformations/placeholder.md)
-* [6.12 - Coding Issues](./6_model_transformations/placeholder.md)
+* [6.10 - Chaining Transformations (Summary)](./6_model_transformations/transformations_example4.md) *
+* [6.11 - More Matrix Math Concepts](./6_model_transformations/more_matrix_math_concepts.md) *
+* [6.12 - Coding Issues](./6_model_transformations/transformation_coding_issues.md) *
