@@ -68,3 +68,13 @@
 * [6.10 - Chaining Transformations (Summary)](./6_model_transformations/transformations_example4.md) *
 * [6.11 - More Matrix Math Concepts](./6_model_transformations/more_matrix_math_concepts.md) *
 * [6.12 - Coding Issues](./6_model_transformations/transformation_coding_issues.md) *
+
+## SECTION 7: Cameras
+* [7.1 - Introduction to Cameras](./7_cameras/placeholder.md)
+* [7.2 - Camera Math](./7_cameras/placeholder.md)
+* [7.3 - Camera Movement](./7_cameras/placeholder.md)
+* [7.4 - Moving a Camera](./7_cameras/placeholder.md)
+* [7.5 - Rotating a Camera](./7_cameras/placeholder.md)
+* [7.6 - Points Along A Path](./7_cameras/placeholder.md)
+* [7.7 - Timing Along A Path](./7_cameras/placeholder.md)
+* [7.8 - Screen Updates and Animation](./7_cameras/placeholder.md)
