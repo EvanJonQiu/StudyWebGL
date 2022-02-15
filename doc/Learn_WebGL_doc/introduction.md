@@ -70,9 +70,9 @@
 * [6.12 - Coding Issues](./6_model_transformations/transformation_coding_issues.md) *
 
 ## SECTION 7: Cameras
-* [7.1 - Introduction to Cameras](./7_cameras/placeholder.md)
-* [7.2 - Camera Math](./7_cameras/placeholder.md)
-* [7.3 - Camera Movement](./7_cameras/placeholder.md)
+* [7.1 - Introduction to Cameras](./7_cameras/camera_introduction.md) *
+* [7.2 - Camera Math](./7_cameras/camera_math.md) *
+* [7.3 - Camera Movement](./7_cameras/camera_movement.md) *
 * [7.4 - Moving a Camera](./7_cameras/placeholder.md)
 * [7.5 - Rotating a Camera](./7_cameras/placeholder.md)
 * [7.6 - Points Along A Path](./7_cameras/placeholder.md)
